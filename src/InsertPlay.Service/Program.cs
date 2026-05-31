@@ -6,8 +6,11 @@ using InsertPlay.Service;
 using InsertPlay.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Serilog;
 
 var builder = Host.CreateDefaultBuilder(args);
+
+builder.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration));
 
 // Enable Windows Service or Linux systemd lifetime as appropriate
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
