@@ -29,6 +29,16 @@
     </Content>
   </ItemGroup>
 
+  <!-- Service installation scripts — copied to the output directory on every build/publish. -->
+  <ItemGroup>
+    <Content Include="install-service.sh">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="install-service.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <!-- Warn at build time when SDL2.dll is missing on Windows. -->
   <Target Name="CheckSdl2Native"
           BeforeTargets="Build"
