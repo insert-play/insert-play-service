@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "id": "b1e9d3f2-47a1-4c8b-95e0-1a2b3c4d5e6f",
+  "title": "Need for Speed: Underground",
+  "version": "1.0",
+  "developer": "EA Black Box",
+  "publisher": "Electronic Arts",
+  "description": "An underground street racing game set in a fictional city. Customize your car and compete in circuit races, drag races, drift events, and sprint challenges to rise through the underground racing scene.",
+  "releaseDate": "2003-11-17",
+  "executable": "speed.exe",
+  "workingDirectory": "",
+  "arguments": [],
+  "stopCombination": ["Back", "Start"],
+  "tags": ["racing", "singleplayer"],
+
+  "coverImage": "assets/cover.jpg",
+  "saveDataPath": "%USERPROFILE%\\Documents\\EA Games\\Need for Speed Underground",
+  "sdSaveDirectory": "saves/"
+}

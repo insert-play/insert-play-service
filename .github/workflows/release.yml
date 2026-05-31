@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  # ── Windows ─────────────────────────────────────────────────────────────────
+  publish-windows:
+    name: Publish (win-x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Download SDL2 native DLL
+        run: powershell -ExecutionPolicy Bypass -File tools/get-sdl2-native.ps1
+
+      - name: Publish (win-x64, framework-dependent)
+        run: >
+          dotnet publish src/InsertPlay.Service
+          -c Release
+          -r win-x64
+          --self-contained false
+          -o publish/win-x64
+
+      - name: Create ZIP archive
+        run: Compress-Archive -Path publish/win-x64/* -DestinationPath insertplay-${{ github.ref_name }}-win-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: insertplay-win-x64
+          path: insertplay-${{ github.ref_name }}-win-x64.zip
+
+  # ── Linux ────────────────────────────────────────────────────────────────────
+  publish-linux:
+    name: Publish (linux-x64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install SDL2 system library
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+
+      - name: Publish (linux-x64, framework-dependent)
+        run: >
+          dotnet publish src/InsertPlay.Service
+          -c Release
+          -r linux-x64
+          --self-contained false
+          -o publish/linux-x64
+
+      - name: Bundle systemd unit
+        run: cp deploy/insertplay.service publish/linux-x64/insertplay.service
+
+      - name: Create tarball
+        run: >
+          tar -czf insertplay-${{ github.ref_name }}-linux-x64.tar.gz
+          -C publish/linux-x64 .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: insertplay-linux-x64
+          path: insertplay-${{ github.ref_name }}-linux-x64.tar.gz
+
+  # ── GitHub Release ───────────────────────────────────────────────────────────
+  create-release:
+    name: Create GitHub Release
+    needs: [publish-windows, publish-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (for CHANGELOG)
+        uses: actions/checkout@v4
+
+      - name: Extract CHANGELOG section for this tag
+        id: changelog
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          # Extract lines between this version header and the next one
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          # Pass multi-line string to output using delimiter
+          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: insertplay-win-x64
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: insertplay-linux-x64
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: InsertPlay ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.notes }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            insertplay-${{ github.ref_name }}-win-x64.zip
+            insertplay-${{ github.ref_name }}-linux-x64.tar.gz

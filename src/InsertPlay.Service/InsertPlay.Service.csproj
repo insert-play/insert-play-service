@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-InsertPlay.Service-c9f718c0-3a29-48ea-a7a8-32c4b3aa1418</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InsertPlay.Core\InsertPlay.Core.csproj" />
+    <ProjectReference Include="..\InsertPlay.Windows\InsertPlay.Windows.csproj" />
+    <ProjectReference Include="..\InsertPlay.Linux\InsertPlay.Linux.csproj" />
+  </ItemGroup>
+
+  <!-- SDL2 native runtime — Windows x64.
+       Run tools/get-sdl2-native.ps1 once to populate this file before building. -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Content Include="native\win-x64\SDL2.dll"
+             Condition="Exists('native\win-x64\SDL2.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>SDL2.dll</TargetPath>
+    </Content>
+  </ItemGroup>
+
+  <!-- Warn at build time when SDL2.dll is missing on Windows. -->
+  <Target Name="CheckSdl2Native"
+          BeforeTargets="Build"
+          Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Warning Condition="!Exists('native\win-x64\SDL2.dll')"
+             Text="SDL2.dll not found at src/InsertPlay.Service/native/win-x64/SDL2.dll. Run tools/get-sdl2-native.ps1 before running the service on Windows." />
+  </Target>
+
+</Project>
