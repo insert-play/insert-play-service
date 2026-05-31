@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3](https://github.com/insert-play/insert-play-service/compare/v0.1.2...v0.1.3) (2026-05-31)
+
+
+### Bug Fixes
+
+* **release:** update artifact paths for GitHub release assets ([4b3dfc2](https://github.com/insert-play/insert-play-service/commit/4b3dfc23192a682c7961dc25fc10da7040c667f5))
+* **release:** update artifact paths for GitHub release assets ([30fff60](https://github.com/insert-play/insert-play-service/commit/30fff60cb8af9bc8dcb512f7aadea6389f807a46))
+
 ## [0.1.2](https://github.com/insert-play/insert-play-service/compare/v0.1.1...v0.1.2) (2026-05-31)
 
 
