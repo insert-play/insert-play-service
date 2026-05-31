@@ -57,7 +57,10 @@ Additional user-defined key/value pairs can be passed via `preLaunchParams` in t
 
 ```json
 {
-  "preLaunchScript": "scripts/configure.ps1",
+  "preLaunchScript": {
+    "windows": "scripts/configure.ps1",
+    "linux":   "scripts/configure.sh"
+  },
   "preLaunchTimeoutSeconds": 20,
   "preLaunchParams": {
     "resolution": "1920x1080",
@@ -66,7 +69,13 @@ Additional user-defined key/value pairs can be passed via `preLaunchParams` in t
 }
 ```
 
-- **`preLaunchScript`** *(string, optional)* — Path to the script, relative to the SD card root. If omitted, no pre-launch step is performed.
+`preLaunchScript` also accepts a plain string as shorthand when the same script works on both platforms:
+
+```json
+{ "preLaunchScript": "scripts/configure.ps1" }
+```
+
+- **`preLaunchScript`** *(string | object, optional)* — Per-platform script paths relative to the SD card root. Use the object form to ship separate scripts for Windows and Linux on the same card. If a platform key is absent the pre-launch step is silently skipped on that platform.
 - **`preLaunchTimeoutSeconds`** *(integer, optional)* — Per-game timeout override. Falls back to the global `appsettings.json` value.
 - **`preLaunchParams`** *(object, optional)* — Arbitrary key/value pairs forwarded as environment variables. The `resolution` key is treated specially: `"native"` means no override (the script receives the literal string `"native"` and can decide what to do with it).
 
