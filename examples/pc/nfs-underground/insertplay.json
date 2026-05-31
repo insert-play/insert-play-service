@@ -13,6 +13,14 @@
   "stopCombination": ["Back", "Start"],
   "tags": ["racing", "singleplayer"],
 
+  "preLaunchScript": {
+    "windows": "scripts/insertplay-prelaunch.ps1",
+    "linux":   "scripts/insertplay-prelaunch.sh"
+  },
+  "preLaunchParams": {
+    "resolution": "native"
+  },
+
   "coverImage": "assets/cover.jpg",
   "saveDataPath": "%USERPROFILE%\\Documents\\EA Games\\Need for Speed Underground",
   "sdSaveDirectory": "saves/"
