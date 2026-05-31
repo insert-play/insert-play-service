@@ -2,14 +2,49 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*.*.*"
-  workflow_dispatch:
+    branches: [main]
+
+permissions:
+  contents: write
 
 jobs:
-  # ── Windows ─────────────────────────────────────────────────────────────────
+  # -- Check whether this version has already been released ------------------
+  check-version:
+    name: Check version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      tag: ${{ steps.read.outputs.tag }}
+      already_released: ${{ steps.check.outputs.already_released }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version.txt
+        id: read
+        run: |
+          VERSION=$(cat version.txt | tr -d '[:space:]')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if release already exists
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(cat version.txt | tr -d '[:space:]')"
+          if gh release view "$TAG" &>/dev/null; then
+            echo "already_released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_released=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # -- Windows ----------------------------------------------------------------
   publish-windows:
     name: Publish (win-x64)
+    needs: check-version
+    if: needs.check-version.outputs.already_released == 'false'
     runs-on: windows-latest
 
     steps:
@@ -33,17 +68,19 @@ jobs:
           -o publish/win-x64
 
       - name: Create ZIP archive
-        run: Compress-Archive -Path publish/win-x64/* -DestinationPath insertplay-${{ github.ref_name }}-win-x64.zip
+        run: Compress-Archive -Path publish/win-x64/* -DestinationPath insertplay-${{ needs.check-version.outputs.tag }}-win-x64.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: insertplay-win-x64
-          path: insertplay-${{ github.ref_name }}-win-x64.zip
+          path: insertplay-${{ needs.check-version.outputs.tag }}-win-x64.zip
 
-  # ── Linux ────────────────────────────────────────────────────────────────────
+  # -- Linux ------------------------------------------------------------------
   publish-linux:
     name: Publish (linux-x64)
+    needs: check-version
+    if: needs.check-version.outputs.already_released == 'false'
     runs-on: ubuntu-latest
 
     steps:
@@ -71,54 +108,47 @@ jobs:
 
       - name: Create tarball
         run: >
-          tar -czf insertplay-${{ github.ref_name }}-linux-x64.tar.gz
+          tar -czf insertplay-${{ needs.check-version.outputs.tag }}-linux-x64.tar.gz
           -C publish/linux-x64 .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: insertplay-linux-x64
-          path: insertplay-${{ github.ref_name }}-linux-x64.tar.gz
+          path: insertplay-${{ needs.check-version.outputs.tag }}-linux-x64.tar.gz
 
-  # ── GitHub Release ───────────────────────────────────────────────────────────
+  # -- GitHub Release ---------------------------------------------------------
   create-release:
     name: Create GitHub Release
-    needs: [publish-windows, publish-linux]
+    needs: [check-version, publish-windows, publish-linux]
+    if: needs.check-version.outputs.already_released == 'false'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-      - name: Checkout (for CHANGELOG)
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
           name: insertplay-win-x64
+          path: .
 
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
           name: insertplay-linux-x64
+          path: .
 
-      - name: Publish release assets
+      - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.ref_name }}"
-          # download-artifact@v4 extracts each artifact into a subdirectory named after the artifact
-          WIN_ZIP="insertplay-win-x64/insertplay-${TAG}-win-x64.zip"
-          LIN_TGZ="insertplay-linux-x64/insertplay-${TAG}-linux-x64.tar.gz"
-
-          if gh release view "$TAG" &>/dev/null; then
-            # Release already exists (created by release-please) — attach assets only
-            gh release upload "$TAG" "$WIN_ZIP" "$LIN_TGZ" --clobber
-          else
-            # No release yet (manual tag push) — create it from CHANGELOG
-            VERSION="${TAG#v}"
-            NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
-            FLAGS=(--title "InsertPlay $TAG" --notes "$NOTES")
-            [[ "$TAG" == *-* ]] && FLAGS+=(--prerelease)
-            gh release create "$TAG" "${FLAGS[@]}" "$WIN_ZIP" "$LIN_TGZ"
-          fi
+          TAG="${{ needs.check-version.outputs.tag }}"
+          VERSION="${{ needs.check-version.outputs.version }}"
+          WIN_ZIP="insertplay-${TAG}-win-x64.zip"
+          LIN_TGZ="insertplay-${TAG}-linux-x64.tar.gz"
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          FLAGS=(--title "InsertPlay ${TAG}" --notes "$NOTES")
+          [[ "$TAG" == *-* ]] && FLAGS+=(--prerelease)
+          gh release create "$TAG" "${FLAGS[@]}" "$WIN_ZIP" "$LIN_TGZ"
