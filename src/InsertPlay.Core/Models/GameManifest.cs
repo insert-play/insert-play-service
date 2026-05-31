@@ -80,7 +80,38 @@ public sealed class GameManifest
     [JsonPropertyName("steamAppId")]
     public int? SteamAppId { get; init; }
 
-    /// <summary>[Future — Priority 1] Relative path to an install script on the SD card.</summary>
+    // -------------------------------------------------------------------------
+    // Pre-Launch Script — Priority 1
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Script to run before the game is launched. Accepts a plain string (applied to all
+    /// platforms) or an object with per-platform keys: { "windows": "...", "linux": "..." }.
+    /// Path is relative to the SD card root.
+    /// </summary>
+    [JsonPropertyName("preLaunchScript")]
+    public PreLaunchScriptSpec? PreLaunchScript { get; init; }
+
+    /// <summary>
+    /// Per-game timeout override for the pre-launch script in seconds.
+    /// Falls back to the global appsettings.json value when null.
+    /// </summary>
+    [JsonPropertyName("preLaunchTimeoutSeconds")]
+    public int? PreLaunchTimeoutSeconds { get; init; }
+
+    /// <summary>
+    /// Arbitrary key/value parameters forwarded to the pre-launch script as
+    /// INSERTPLAY_&lt;KEY&gt; environment variables (keys are uppercased).
+    /// The "resolution" key is treated specially: defaults to "native" when omitted.
+    /// </summary>
+    [JsonPropertyName("preLaunchParams")]
+    public Dictionary<string, string>? PreLaunchParams { get; init; }
+
+    // -------------------------------------------------------------------------
+    // Future fields — Priority 2 (Installation & Steam)
+    // -------------------------------------------------------------------------
+
+    /// <summary>[Future — Priority 2] Relative path to an install script on the SD card.</summary>
     [JsonPropertyName("installScript")]
     public string? InstallScript { get; init; }
 
