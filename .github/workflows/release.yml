@@ -91,18 +91,6 @@ jobs:
       - name: Checkout (for CHANGELOG)
         uses: actions/checkout@v4
 
-      - name: Extract CHANGELOG section for this tag
-        id: changelog
-        run: |
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"
-          # Extract lines between this version header and the next one
-          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
-          # Pass multi-line string to output using delimiter
-          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$NOTES" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
@@ -113,14 +101,22 @@ jobs:
         with:
           name: insertplay-linux-x64
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: InsertPlay ${{ github.ref_name }}
-          body: ${{ steps.changelog.outputs.notes }}
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          files: |
-            insertplay-${{ github.ref_name }}-win-x64.zip
-            insertplay-${{ github.ref_name }}-linux-x64.tar.gz
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          WIN_ZIP="insertplay-${TAG}-win-x64.zip"
+          LIN_TGZ="insertplay-${TAG}-linux-x64.tar.gz"
+
+          if gh release view "$TAG" &>/dev/null; then
+            # Release already exists (created by release-please) — attach assets only
+            gh release upload "$TAG" "$WIN_ZIP" "$LIN_TGZ" --clobber
+          else
+            # No release yet (manual tag push) — create it from CHANGELOG
+            VERSION="${TAG#v}"
+            NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+            FLAGS=(--title "InsertPlay $TAG" --notes "$NOTES")
+            [[ "$TAG" == *-* ]] && FLAGS+=(--prerelease)
+            gh release create "$TAG" "${FLAGS[@]}" "$WIN_ZIP" "$LIN_TGZ"
+          fi
