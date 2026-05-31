@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4](https://github.com/insert-play/insert-play-service/compare/v0.1.3...v0.1.4) (2026-05-31)
+
+
+### Features
+
+* **release:** add workflow_dispatch trigger to release workflow ([725d706](https://github.com/insert-play/insert-play-service/commit/725d706545f3a849c13ea54391e9d515a7ce2eac))
+* **release:** add workflow_dispatch trigger to release workflow ([e793d0a](https://github.com/insert-play/insert-play-service/commit/e793d0ad417112dff4d882102f38a01fb38ae337))
+
 ## [0.1.3](https://github.com/insert-play/insert-play-service/compare/v0.1.2...v0.1.3) (2026-05-31)
 
 
