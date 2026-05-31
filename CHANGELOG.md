@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2](https://github.com/insert-play/insert-play-service/compare/v0.1.1...v0.1.2) (2026-05-31)
+
+
+### Features
+
+* **release:** streamline GitHub release process and remove CHANGELOG extraction step ([f3c8ed3](https://github.com/insert-play/insert-play-service/commit/f3c8ed3f393a8c30327493ead405a7d0f6e8cb06))
+* **release:** streamline GitHub release process and remove CHANGELOG… ([e59aed8](https://github.com/insert-play/insert-play-service/commit/e59aed8c3df078965c29144e330e496473d36fd6))
+
 ## [0.1.1](https://github.com/insert-play/insert-play-service/compare/v0.1.0...v0.1.1) (2026-05-31)
 
 
