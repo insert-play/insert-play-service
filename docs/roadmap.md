@@ -29,7 +29,87 @@ The minimum viable product focuses on the core insert-and-play experience.
 
 ---
 
-## Priority 1 — Game Installation & Steam Integration
+## Priority 1 — Pre-Launch Script
+
+Allow each game card to ship a script that runs **before the game process is started**. The service calls the script, waits for it to finish, and only then launches the game. This enables per-game, per-machine configuration that requires no changes to the game binary itself — e.g. setting a custom display resolution, adjusting graphics settings files, mounting overlays, or patching config files in place.
+
+### Planned Behavior
+
+1. If the manifest declares a `preLaunchScript`, the service resolves its path relative to the SD card root.
+2. The service invokes the script, passing the configured parameters as **environment variables** (cross-platform) and optionally as positional CLI arguments.
+3. The script runs synchronously. If it exits with a non-zero code the launch is aborted and the error is logged.
+4. A configurable `preLaunchTimeoutSeconds` (default: `30`) is enforced to prevent a hanging script from blocking the service indefinitely.
+5. On Windows, `.ps1` scripts are executed via `powershell -ExecutionPolicy Bypass`; `.bat` / `.cmd` via `cmd /c`. On Linux/SteamOS, `.sh` scripts are executed via `bash`.
+
+### Parameters Passed to the Script
+
+Parameters are exposed as environment variables prefixed with `INSERTPLAY_`, so scripts on any platform can read them uniformly.
+
+| Environment variable | Source | Default |
+|---|---|---|
+| `INSERTPLAY_RESOLUTION` | `preLaunchParams.resolution` in manifest, overridable in `appsettings.json` | `native` |
+| `INSERTPLAY_CARD_PATH` | Mount path of the SD card (drive root on Windows, mount point on Linux) | *(always set)* |
+| `INSERTPLAY_GAME_TITLE` | `title` field from the manifest | *(always set)* |
+
+Additional user-defined key/value pairs can be passed via `preLaunchParams` in the manifest and are forwarded as `INSERTPLAY_<KEY>` (uppercased).
+
+### Manifest Fields
+
+```json
+{
+  "preLaunchScript": "scripts/configure.ps1",
+  "preLaunchTimeoutSeconds": 20,
+  "preLaunchParams": {
+    "resolution": "1920x1080",
+    "graphicsPreset": "high"
+  }
+}
+```
+
+- **`preLaunchScript`** *(string, optional)* — Path to the script, relative to the SD card root. If omitted, no pre-launch step is performed.
+- **`preLaunchTimeoutSeconds`** *(integer, optional)* — Per-game timeout override. Falls back to the global `appsettings.json` value.
+- **`preLaunchParams`** *(object, optional)* — Arbitrary key/value pairs forwarded as environment variables. The `resolution` key is treated specially: `"native"` means no override (the script receives the literal string `"native"` and can decide what to do with it).
+
+### New Configuration Options
+
+- `PreLaunch.Enabled` — toggle pre-launch execution globally (default: `true`)
+- `PreLaunch.TimeoutSeconds` — global timeout in seconds (default: `30`)
+- `PreLaunch.DefaultResolution` — fallback resolution when the manifest does not specify one (default: `"native"`)
+
+### Example Script (Windows — `scripts/configure.ps1`)
+
+```powershell
+param()
+# Resolution is available as an environment variable
+$res = $env:INSERTPLAY_RESOLUTION
+
+if ($res -ne "native") {
+    # Write resolution into the game's config file
+    $configPath = Join-Path $env:INSERTPLAY_CARD_PATH "data\config.ini"
+    (Get-Content $configPath) -replace '^(Width\s*=).*', "Width = $($res.Split('x')[0])" |
+        Set-Content $configPath
+    (Get-Content $configPath) -replace '^(Height\s*=).*', "Height = $($res.Split('x')[1])" |
+        Set-Content $configPath
+}
+```
+
+### Example Script (Linux/SteamOS — `scripts/configure.sh`)
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$INSERTPLAY_RESOLUTION" != "native" ]]; then
+    WIDTH="${INSERTPLAY_RESOLUTION%x*}"
+    HEIGHT="${INSERTPLAY_RESOLUTION#*x}"
+    sed -i "s/^width=.*/width=${WIDTH}/" "${INSERTPLAY_CARD_PATH}/data/config.cfg"
+    sed -i "s/^height=.*/height=${HEIGHT}/" "${INSERTPLAY_CARD_PATH}/data/config.cfg"
+fi
+```
+
+---
+
+## Priority 2 — Game Installation & Steam Integration
 
 Extend InsertPlay to install games from the SD card to the local machine and register them as Steam non-Steam shortcuts, for a seamless Steam Deck and Big Picture Mode experience.
 
@@ -58,7 +138,7 @@ Extend InsertPlay to install games from the SD card to the local machine and reg
 
 ---
 
-## Priority 2 — Portable Savegame Sync
+## Priority 3 — Portable Savegame Sync
 
 Enable a fully portable gaming experience by syncing save data between the SD card and the local machine automatically.
 
