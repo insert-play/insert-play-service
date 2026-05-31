@@ -38,4 +38,24 @@ public sealed class InsertPlayOptions
     /// Default: Information.
     /// </summary>
     public string LogLevel { get; set; } = "Information";
+
+    /// <summary>Options controlling pre-launch script execution.</summary>
+    public PreLaunchOptions PreLaunch { get; set; } = new();
+}
+
+/// <summary>Options for the pre-launch script feature.</summary>
+public sealed class PreLaunchOptions
+{
+    /// <summary>Set to false to skip pre-launch scripts globally. Default: true.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Maximum seconds a pre-launch script may run before being killed. Default: 30.</summary>
+    public int TimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Resolution passed to scripts when the manifest does not specify one.
+    /// "native" means no override — the script receives the literal string "native".
+    /// Default: "native".
+    /// </summary>
+    public string DefaultResolution { get; set; } = "native";
 }
