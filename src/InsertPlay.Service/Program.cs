@@ -29,6 +29,7 @@ builder.ConfigureServices((context, services) =>
 
     // Register Core services
     services.AddSingleton<ManifestParser>();
+    services.AddSingleton<PreLaunchRunner>();
     services.AddSingleton<GameLauncher>();
     services.AddSingleton<ProcessManager>();
     services.AddSingleton<ControllerInputHandler>();

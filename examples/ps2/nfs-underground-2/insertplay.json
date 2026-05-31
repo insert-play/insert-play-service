@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "id": "e7d4b3a1-58c6-4f2e-b834-4e5f6a7b8c9d",
+  "title": "Need for Speed: Underground 2",
+  "version": "1.0",
+  "developer": "EA Black Box",
+  "publisher": "Electronic Arts",
+  "description": "The sequel to the underground street racing phenomenon. Explore an open-world city, compete in circuit, sprint, drag, drift, and URL races, and customize your car with an expanded tuning system to build the ultimate street machine.",
+  "releaseDate": "2004-11-09",
+  "executable": "pcsx2/pcsx2-qt.exe",
+  "workingDirectory": "pcsx2",
+  "arguments": ["-fullscreen", "../game.iso"],
+  "stopCombination": ["Back", "Start"],
+  "tags": ["racing", "open-world", "singleplayer"],
+
+  "coverImage": "assets/cover.jpg",
+  "sdSaveDirectory": "pcsx2/memcards/"
+}

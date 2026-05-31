@@ -14,6 +14,7 @@ public sealed class InsertPlayWorker : BackgroundService
 {
     private readonly IDeviceMonitor _deviceMonitor;
     private readonly ManifestParser _manifestParser;
+    private readonly PreLaunchRunner _preLaunchRunner;
     private readonly GameLauncher _gameLauncher;
     private readonly ProcessManager _processManager;
     private readonly ControllerInputHandler _controllerInput;
@@ -22,10 +23,12 @@ public sealed class InsertPlayWorker : BackgroundService
     // Track which drive path the currently running game was launched from.
     private string? _activeCardPath;
     private readonly object _stateLock = new();
+    private CancellationToken _stoppingToken;
 
     public InsertPlayWorker(
         IDeviceMonitor deviceMonitor,
         ManifestParser manifestParser,
+        PreLaunchRunner preLaunchRunner,
         GameLauncher gameLauncher,
         ProcessManager processManager,
         ControllerInputHandler controllerInput,
@@ -33,6 +36,7 @@ public sealed class InsertPlayWorker : BackgroundService
     {
         _deviceMonitor = deviceMonitor;
         _manifestParser = manifestParser;
+        _preLaunchRunner = preLaunchRunner;
         _gameLauncher = gameLauncher;
         _processManager = processManager;
         _controllerInput = controllerInput;
@@ -46,6 +50,7 @@ public sealed class InsertPlayWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _stoppingToken = stoppingToken;
         _logger.LogInformation("InsertPlay service starting.");
         await _deviceMonitor.StartAsync(stoppingToken);
         _logger.LogInformation("InsertPlay service running. Waiting for SD game cards.");
@@ -78,6 +83,13 @@ public sealed class InsertPlayWorker : BackgroundService
                 return;
             }
             _activeCardPath = e.DrivePath;
+        }
+
+        var preLaunchOk = await _preLaunchRunner.RunAsync(manifest, e.DrivePath, _stoppingToken);
+        if (!preLaunchOk)
+        {
+            lock (_stateLock) _activeCardPath = null;
+            return;
         }
 
         var process = _gameLauncher.Launch(manifest, e.DrivePath);
