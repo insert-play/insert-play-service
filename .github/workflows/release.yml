@@ -106,8 +106,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ github.ref_name }}"
-          WIN_ZIP="insertplay-${TAG}-win-x64.zip"
-          LIN_TGZ="insertplay-${TAG}-linux-x64.tar.gz"
+          # download-artifact@v4 extracts each artifact into a subdirectory named after the artifact
+          WIN_ZIP="insertplay-win-x64/insertplay-${TAG}-win-x64.zip"
+          LIN_TGZ="insertplay-linux-x64/insertplay-${TAG}-linux-x64.tar.gz"
 
           if gh release view "$TAG" &>/dev/null; then
             # Release already exists (created by release-please) — attach assets only
