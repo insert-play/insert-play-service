@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0-windows;net8.0</TargetFrameworks>
+    <!-- On Windows both TFMs are built; on Linux only net8.0 is available. -->
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net8.0-windows;net8.0</TargetFrameworks>
+    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('Windows'))">net8.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-InsertPlay.Service-c9f718c0-3a29-48ea-a7a8-32c4b3aa1418</UserSecretsId>

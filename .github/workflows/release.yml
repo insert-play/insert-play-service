@@ -62,6 +62,7 @@ jobs:
       - name: Publish (win-x64, framework-dependent)
         run: >
           dotnet publish src/InsertPlay.Service
+          -f net8.0-windows
           -c Release
           -r win-x64
           --self-contained false
@@ -98,6 +99,7 @@ jobs:
       - name: Publish (linux-x64, framework-dependent)
         run: >
           dotnet publish src/InsertPlay.Service
+          -f net8.0
           -c Release
           -r linux-x64
           --self-contained false
