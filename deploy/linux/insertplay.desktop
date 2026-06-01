@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=InsertPlay
+Comment=InsertPlay — SD game card auto-launcher
+# Adjust the path below to wherever you extracted InsertPlay
+Exec=/opt/insertplay/InsertPlay.Service
+Icon=media-flash
+Terminal=false
+Categories=Game;Utility;
+X-GNOME-Autostart-enabled=true
