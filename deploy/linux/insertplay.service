@@ -1,0 +1,13 @@
+[Unit]
+Description=InsertPlay — SD game card auto-launcher
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/insertplay/InsertPlay.Service
+WorkingDirectory=/opt/insertplay
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

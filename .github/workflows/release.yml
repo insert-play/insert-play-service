@@ -105,8 +105,11 @@ jobs:
           --self-contained false
           -o publish/linux-x64
 
-      - name: Bundle systemd unit
-        run: cp deploy/insertplay.service publish/linux-x64/insertplay.service
+      - name: Bundle autostart helpers
+        run: |
+          cp deploy/linux/insertplay.desktop publish/linux-x64/insertplay.desktop
+          cp deploy/linux/add-to-autostart.sh publish/linux-x64/add-to-autostart.sh
+          chmod +x publish/linux-x64/add-to-autostart.sh
 
       - name: Create tarball
         run: >
