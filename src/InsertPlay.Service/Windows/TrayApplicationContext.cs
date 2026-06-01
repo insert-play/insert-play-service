@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Extensions.Hosting;
 
@@ -16,7 +17,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = CreateIcon(),
+            Icon = LoadIcon(),
             Text = "InsertPlay",
             Visible = true,
             ContextMenuStrip = BuildContextMenu(),
@@ -56,20 +57,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
         Application.Exit();
     }
 
-    /// <summary>Creates a simple blue play-button icon for the system tray.</summary>
-    private static Icon CreateIcon()
+    internal static Icon LoadIcon()
     {
-        var bmp = new Bitmap(16, 16);
-        using (var g = Graphics.FromImage(bmp))
-        {
-            g.FillRectangle(new SolidBrush(Color.FromArgb(0, 120, 215)), 0, 0, 16, 16);
-            g.FillPolygon(Brushes.White, new Point[]
-            {
-                new(5, 3),
-                new(13, 8),
-                new(5, 13),
-            });
-        }
+        using var stream = Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream("InsertPlay.Service.Resources.icon.png")!;
+        using var bmp = new Bitmap(stream);
         return Icon.FromHandle(bmp.GetHicon());
     }
 

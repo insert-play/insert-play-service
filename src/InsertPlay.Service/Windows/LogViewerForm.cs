@@ -11,6 +11,7 @@ internal sealed class LogViewerForm : Form
     public LogViewerForm()
     {
         Text = "InsertPlay — Logs";
+        Icon = TrayApplicationContext.LoadIcon();
         Size = new Size(960, 620);
         MinimumSize = new Size(640, 400);
         StartPosition = FormStartPosition.CenterScreen;

@@ -46,6 +46,11 @@
     <ProjectReference Include="..\InsertPlay.Linux\InsertPlay.Linux.csproj" />
   </ItemGroup>
 
+  <!-- Application icon (Windows only) -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <EmbeddedResource Include="Resources\icon.png" />
+  </ItemGroup>
+
   <!-- SDL2 native runtime — Windows x64.
        Run tools/get-sdl2-native.ps1 once to populate this file before building. -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
