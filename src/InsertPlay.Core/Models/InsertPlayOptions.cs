@@ -41,6 +41,9 @@ public sealed class InsertPlayOptions
 
     /// <summary>Options controlling pre-launch script execution.</summary>
     public PreLaunchOptions PreLaunch { get; set; } = new();
+
+    /// <summary>Options controlling PS2 optical disc auto-launch via PCSX2.</summary>
+    public Ps2DiscOptions PS2Disc { get; set; } = new();
 }
 
 /// <summary>Options for the pre-launch script feature.</summary>
@@ -58,4 +61,20 @@ public sealed class PreLaunchOptions
     /// Default: "native".
     /// </summary>
     public string DefaultResolution { get; set; } = "native";
+}
+
+/// <summary>Options for PS2 optical disc support.</summary>
+public sealed class Ps2DiscOptions
+{
+    /// <summary>Globally enables the PS2 optical disc module. Default: true.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>When true, auto-launches inserted PS2 discs if idle. Default: true.</summary>
+    public bool AutoLaunch { get; set; } = true;
+
+    /// <summary>
+    /// If true, requires a local PCSX2 installation in ./pcsx2 under the service base path.
+    /// Default: true.
+    /// </summary>
+    public bool RequireLocalPcsx2Folder { get; set; } = true;
 }
