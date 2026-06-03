@@ -31,7 +31,9 @@ public sealed class PreLaunchRunner
     /// timed out — the caller should abort the game launch in that case.
     /// </returns>
     public async Task<bool> RunAsync(
-        GameManifest manifest, string cardPath, CancellationToken cancellationToken)
+        GameManifest manifest, string cardPath,
+        RetroAchievementsCredentials? raCredentials,
+        CancellationToken cancellationToken)
     {
         var opts = _options.Value;
 
@@ -62,7 +64,7 @@ public sealed class PreLaunchRunner
             ? TimeSpan.FromSeconds(manifest.PreLaunchTimeoutSeconds.Value)
             : TimeSpan.FromSeconds(opts.PreLaunch.TimeoutSeconds);
 
-        var env = BuildEnvironment(manifest, cardPath, opts);
+        var env = BuildEnvironment(manifest, cardPath, opts, raCredentials);
         var (interpreter, arguments) = ResolveInterpreter(scriptPath);
 
         _logger.LogInformation(
@@ -122,8 +124,9 @@ public sealed class PreLaunchRunner
         };
     }
 
-    private static Dictionary<string, string> BuildEnvironment(
-        GameManifest manifest, string cardPath, InsertPlayOptions opts)
+    internal static Dictionary<string, string> BuildEnvironment(
+        GameManifest manifest, string cardPath, InsertPlayOptions opts,
+        RetroAchievementsCredentials? raCredentials = null)
     {
         var env = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -144,6 +147,26 @@ public sealed class PreLaunchRunner
         {
             foreach (var (key, value) in manifest.PreLaunchParams)
                 env[$"INSERTPLAY_{key.ToUpperInvariant()}"] = value;
+        }
+
+        // RetroAchievements credentials (when the user is logged in)
+        if (raCredentials is not null)
+        {
+            env["INSERTPLAY_RA_USERNAME"] = raCredentials.Username;
+
+            var password = string.IsNullOrWhiteSpace(raCredentials.Password)
+                ? raCredentials.ApiToken
+                : raCredentials.Password;
+
+            if (!string.IsNullOrWhiteSpace(password))
+                env["INSERTPLAY_RA_PASSWORD"] = password;
+
+            // Backward compatibility for existing scripts that still read RA_TOKEN.
+            if (!string.IsNullOrWhiteSpace(raCredentials.ApiToken))
+                env["INSERTPLAY_RA_TOKEN"] = raCredentials.ApiToken;
+
+            if (raCredentials.LoginTimestamp > 0)
+                env["INSERTPLAY_RA_LOGIN_TIMESTAMP"] = raCredentials.LoginTimestamp.ToString();
         }
 
         return env;
