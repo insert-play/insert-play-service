@@ -13,7 +13,9 @@ namespace InsertPlay.Service;
 public sealed class InsertPlayWorker : BackgroundService
 {
     private readonly IDeviceMonitor _deviceMonitor;
+    private readonly IPS2DiscMonitor _ps2DiscMonitor;
     private readonly ManifestParser _manifestParser;
+    private readonly Ps2DiscManifestFactory _ps2DiscManifestFactory;
     private readonly PreLaunchRunner _preLaunchRunner;
     private readonly PostLaunchRunner _postLaunchRunner;
     private readonly RetroAchievementsSessionProvider _raSessionProvider;
@@ -25,6 +27,7 @@ public sealed class InsertPlayWorker : BackgroundService
 
     // State of the currently running game session.
     private string? _activeCardPath;
+    private string? _activeLaunchBasePath;
     private GameManifest? _activeManifest;
     private RetroAchievementsCredentials? _activeRaCredentials;
     private readonly object _stateLock = new();
@@ -32,7 +35,9 @@ public sealed class InsertPlayWorker : BackgroundService
 
     public InsertPlayWorker(
         IDeviceMonitor deviceMonitor,
+        IPS2DiscMonitor ps2DiscMonitor,
         ManifestParser manifestParser,
+        Ps2DiscManifestFactory ps2DiscManifestFactory,
         PreLaunchRunner preLaunchRunner,
         PostLaunchRunner postLaunchRunner,
         RetroAchievementsSessionProvider raSessionProvider,
@@ -43,7 +48,9 @@ public sealed class InsertPlayWorker : BackgroundService
         ILogger<InsertPlayWorker> logger)
     {
         _deviceMonitor    = deviceMonitor;
+        _ps2DiscMonitor   = ps2DiscMonitor;
         _manifestParser   = manifestParser;
+        _ps2DiscManifestFactory = ps2DiscManifestFactory;
         _preLaunchRunner  = preLaunchRunner;
         _postLaunchRunner = postLaunchRunner;
         _raSessionProvider = raSessionProvider;
@@ -55,6 +62,8 @@ public sealed class InsertPlayWorker : BackgroundService
 
         _deviceMonitor.CardInserted += OnCardInserted;
         _deviceMonitor.CardRemoved += OnCardRemoved;
+        _ps2DiscMonitor.DiscInserted += OnPs2DiscInserted;
+        _ps2DiscMonitor.DiscRemoved += OnPs2DiscRemoved;
         _processManager.GameExited += OnGameExited;
         _controllerInput.StopRequested += OnStopRequested;
     }
@@ -68,6 +77,7 @@ public sealed class InsertPlayWorker : BackgroundService
         await _raSessionProvider.WarmupAsync(stoppingToken);
 
         await _deviceMonitor.StartAsync(stoppingToken);
+        await _ps2DiscMonitor.StartAsync(stoppingToken);
         _logger.LogInformation("InsertPlay service running. Waiting for SD game cards.");
 
         // Keep the worker alive until the host requests cancellation.
@@ -76,6 +86,7 @@ public sealed class InsertPlayWorker : BackgroundService
         _logger.LogInformation("InsertPlay service stopping.");
         _controllerInput.StopPolling();
         await _processManager.StopAsync(CancellationToken.None);
+        await _ps2DiscMonitor.StopAsync(CancellationToken.None);
         await _deviceMonitor.StopAsync(CancellationToken.None);
     }
 
@@ -90,6 +101,34 @@ public sealed class InsertPlayWorker : BackgroundService
             return;
         }
 
+        await TryLaunchAsync(manifest, e.DrivePath, e.DrivePath);
+    }
+
+    private async void OnPs2DiscInserted(object? sender, Ps2DiscEventArgs e)
+    {
+        _logger.LogInformation("PS2 disc inserted at {Path}.", e.DrivePath);
+
+        if (!_ps2DiscManifestFactory.TryCreateForDrive(
+                e.DrivePath,
+                out var manifest,
+                out var launchBasePath)
+            || manifest is null)
+        {
+            _logger.LogDebug("No PS2 launch manifest produced for drive {Path}.", e.DrivePath);
+            return;
+        }
+
+        await TryLaunchAsync(manifest, e.DrivePath, launchBasePath);
+    }
+
+    private async Task TryLaunchAsync(GameManifest manifest, string mediaPath, string launchBasePath)
+    {
+        if (_processManager.IsRunning)
+        {
+            _logger.LogWarning("A game is already running. Ignoring media at {Path}.", mediaPath);
+            return;
+        }
+
         var savedCredentials = _credentialStore.Load();
         var runtimeCredentials = await _raSessionProvider.EnrichAsync(savedCredentials, _stoppingToken);
 
@@ -97,32 +136,35 @@ public sealed class InsertPlayWorker : BackgroundService
         {
             if (_processManager.IsRunning)
             {
-                _logger.LogWarning("A game is already running. Ignoring card at {Path}.", e.DrivePath);
+                _logger.LogWarning("A game is already running. Ignoring media at {Path}.", mediaPath);
                 return;
             }
-            _activeCardPath        = e.DrivePath;
+            _activeCardPath        = mediaPath;
+            _activeLaunchBasePath  = launchBasePath;
             _activeManifest        = manifest;
             _activeRaCredentials   = runtimeCredentials;
         }
 
-        var preLaunchOk = await _preLaunchRunner.RunAsync(manifest, e.DrivePath, _activeRaCredentials, _stoppingToken);
+        var preLaunchOk = await _preLaunchRunner.RunAsync(manifest, launchBasePath, _activeRaCredentials, _stoppingToken);
         if (!preLaunchOk)
         {
             lock (_stateLock)
             {
                 _activeCardPath      = null;
+                _activeLaunchBasePath = null;
                 _activeManifest      = null;
                 _activeRaCredentials = null;
             }
             return;
         }
 
-        var process = _gameLauncher.Launch(manifest, e.DrivePath);
+        var process = _gameLauncher.Launch(manifest, launchBasePath);
         if (process is null)
         {
             lock (_stateLock)
             {
                 _activeCardPath      = null;
+                _activeLaunchBasePath = null;
                 _activeManifest      = null;
                 _activeRaCredentials = null;
             }
@@ -135,13 +177,23 @@ public sealed class InsertPlayWorker : BackgroundService
 
     private async void OnCardRemoved(object? sender, CardEventArgs e)
     {
+        await HandleMediaRemovedAsync(e.DrivePath);
+    }
+
+    private async void OnPs2DiscRemoved(object? sender, Ps2DiscEventArgs e)
+    {
+        await HandleMediaRemovedAsync(e.DrivePath);
+    }
+
+    private async Task HandleMediaRemovedAsync(string mediaPath)
+    {
         bool isActiveCard;
-        lock (_stateLock) isActiveCard = _activeCardPath == e.DrivePath;
+        lock (_stateLock) isActiveCard = _activeCardPath == mediaPath;
 
         if (!isActiveCard)
             return;
 
-        _logger.LogWarning("Active game card removed at {Path}. Stopping game.", e.DrivePath);
+        _logger.LogWarning("Active media removed at {Path}. Stopping game.", mediaPath);
         _controllerInput.StopPolling();
         await _processManager.StopAsync(CancellationToken.None);
     }
@@ -157,22 +209,25 @@ public sealed class InsertPlayWorker : BackgroundService
     {
         GameManifest? manifest;
         string? cardPath;
+        string? launchBasePath;
         RetroAchievementsCredentials? raCredentials;
 
         lock (_stateLock)
         {
             manifest         = _activeManifest;
             cardPath         = _activeCardPath;
+            launchBasePath   = _activeLaunchBasePath;
             raCredentials    = _activeRaCredentials;
             _activeCardPath      = null;
+            _activeLaunchBasePath = null;
             _activeManifest      = null;
             _activeRaCredentials = null;
         }
 
         _controllerInput.StopPolling();
 
-        if (manifest is not null && cardPath is not null)
-            await _postLaunchRunner.RunAsync(manifest, cardPath, raCredentials, CancellationToken.None);
+        if (manifest is not null && launchBasePath is not null)
+            await _postLaunchRunner.RunAsync(manifest, launchBasePath, raCredentials, CancellationToken.None);
 
         _logger.LogInformation("Game session ended. Waiting for next card insertion.");
     }

@@ -72,15 +72,18 @@ internal static class Program
 
 #if WINDOWS
             services.AddSingleton<IDeviceMonitor, WindowsDeviceMonitor>();
+            services.AddSingleton<IPS2DiscMonitor, WindowsPs2DiscMonitor>();
 #else
 #pragma warning disable CA1416 // LinuxDeviceMonitor is linux-only; this branch only runs on Linux
             services.AddSingleton<IDeviceMonitor, LinuxDeviceMonitor>();
+            services.AddSingleton<IPS2DiscMonitor, LinuxPs2DiscMonitor>();
 #pragma warning restore CA1416
 #endif
 
             services.AddSingleton<ICredentialStore, CredentialStore>();
             services.AddSingleton<RetroAchievementsSessionProvider>();
             services.AddSingleton<ManifestParser>();
+            services.AddSingleton<Ps2DiscManifestFactory>();
             services.AddSingleton<PreLaunchRunner>();
             services.AddSingleton<PostLaunchRunner>();
             services.AddSingleton<GameLauncher>();
