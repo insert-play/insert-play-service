@@ -60,3 +60,5 @@ __pycache__/
 # ── User-specific local settings ─────────────────────────────────────────────
 appsettings.Development.json
 appsettings.Local.json
+
+.tmpbuild
