@@ -73,7 +73,7 @@ public class PreLaunchRunnerTests
         var spec     = new PreLaunchScriptSpec { Windows = "nonexistent.ps1", Linux = "nonexistent.sh" };
         var manifest = MinimalManifest(spec);
 
-        var result = await runner.RunAsync(manifest, Path.GetTempPath(), CancellationToken.None);
+        var result = await runner.RunAsync(manifest, Path.GetTempPath(), null, CancellationToken.None);
 
         Assert.True(result);
     }
@@ -84,7 +84,7 @@ public class PreLaunchRunnerTests
         var runner   = BuildRunner();
         var manifest = MinimalManifest(script: null);
 
-        var result = await runner.RunAsync(manifest, Path.GetTempPath(), CancellationToken.None);
+        var result = await runner.RunAsync(manifest, Path.GetTempPath(), null, CancellationToken.None);
 
         Assert.True(result);
     }
@@ -99,7 +99,7 @@ public class PreLaunchRunnerTests
             : new PreLaunchScriptSpec { Windows = "scripts/configure.ps1" };
         var manifest = MinimalManifest(spec);
 
-        var result = await runner.RunAsync(manifest, Path.GetTempPath(), CancellationToken.None);
+        var result = await runner.RunAsync(manifest, Path.GetTempPath(), null, CancellationToken.None);
 
         Assert.True(result);
     }
@@ -111,7 +111,7 @@ public class PreLaunchRunnerTests
         var spec     = new PreLaunchScriptSpec { Windows = "missing.bat", Linux = "missing.sh" };
         var manifest = MinimalManifest(spec);
 
-        var result = await runner.RunAsync(manifest, Path.GetTempPath(), CancellationToken.None);
+        var result = await runner.RunAsync(manifest, Path.GetTempPath(), null, CancellationToken.None);
 
         // Missing script is non-fatal — service logs a warning and continues
         Assert.True(result);
@@ -127,7 +127,7 @@ public class PreLaunchRunnerTests
             var spec     = PlatformScript(scriptPath);
             var manifest = MinimalManifest(spec);
 
-            var result = await runner.RunAsync(manifest, tempDir, CancellationToken.None);
+            var result = await runner.RunAsync(manifest, tempDir, null, CancellationToken.None);
 
             Assert.True(result);
         }
@@ -147,7 +147,7 @@ public class PreLaunchRunnerTests
             var spec     = PlatformScript(scriptPath);
             var manifest = MinimalManifest(spec);
 
-            var result = await runner.RunAsync(manifest, tempDir, CancellationToken.None);
+            var result = await runner.RunAsync(manifest, tempDir, null, CancellationToken.None);
 
             Assert.False(result);
         }
