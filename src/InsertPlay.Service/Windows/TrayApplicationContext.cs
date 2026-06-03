@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
+using InsertPlay.Core;
 using Microsoft.Extensions.Hosting;
 
 namespace InsertPlay.Service.Windows;
@@ -8,12 +9,14 @@ namespace InsertPlay.Service.Windows;
 internal sealed class TrayApplicationContext : ApplicationContext
 {
     private readonly IHost _host;
+    private readonly ICredentialStore _credentialStore;
     private readonly NotifyIcon _notifyIcon;
     private LogViewerForm? _logForm;
 
-    public TrayApplicationContext(IHost host)
+    public TrayApplicationContext(IHost host, ICredentialStore credentialStore)
     {
-        _host = host;
+        _host            = host;
+        _credentialStore = credentialStore;
 
         _notifyIcon = new NotifyIcon
         {
@@ -30,6 +33,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add("Ver Logs", null, (_, _) => ShowLogViewer());
+        menu.Items.Add("Conta RetroAchievements...", null, (_, _) => ShowRaLogin());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Sair", null, (_, _) => ExitApplication());
         return menu;
@@ -39,7 +43,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (_logForm is null || _logForm.IsDisposed)
         {
-            _logForm = new LogViewerForm();
+            _logForm = new LogViewerForm(_credentialStore);
             _logForm.Show();
         }
         else
@@ -48,6 +52,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _logForm.BringToFront();
             _logForm.Activate();
         }
+    }
+
+    private void ShowRaLogin()
+    {
+        using var form = new RetroAchievementsLoginForm(_credentialStore);
+        form.ShowDialog();
     }
 
     private void ExitApplication()

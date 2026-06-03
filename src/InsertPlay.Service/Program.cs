@@ -27,7 +27,8 @@ internal static class Program
 
         var host = BuildHost(args);
         host.StartAsync().GetAwaiter().GetResult();
-        System.Windows.Forms.Application.Run(new TrayApplicationContext(host));
+        var credentialStore = host.Services.GetRequiredService<ICredentialStore>();
+        System.Windows.Forms.Application.Run(new TrayApplicationContext(host, credentialStore));
         host.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
     }
 #else
@@ -77,8 +78,11 @@ internal static class Program
 #pragma warning restore CA1416
 #endif
 
+            services.AddSingleton<ICredentialStore, CredentialStore>();
+            services.AddSingleton<RetroAchievementsSessionProvider>();
             services.AddSingleton<ManifestParser>();
             services.AddSingleton<PreLaunchRunner>();
+            services.AddSingleton<PostLaunchRunner>();
             services.AddSingleton<GameLauncher>();
             services.AddSingleton<ProcessManager>();
             services.AddSingleton<ControllerInputHandler>();

@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Windows.Forms;
+using InsertPlay.Core;
 using Serilog.Events;
 
 namespace InsertPlay.Service.Windows;
@@ -7,9 +8,11 @@ namespace InsertPlay.Service.Windows;
 internal sealed class LogViewerForm : Form
 {
     private readonly RichTextBox _logBox;
+    private readonly ICredentialStore _credentialStore;
 
-    public LogViewerForm()
+    public LogViewerForm(ICredentialStore credentialStore)
     {
+        _credentialStore = credentialStore;
         Text = "InsertPlay — Logs";
         Icon = TrayApplicationContext.LoadIcon();
         Size = new Size(960, 620);
@@ -41,7 +44,15 @@ internal sealed class LogViewerForm : Form
         var btnOpenFolder = MakeButton("Abrir Pasta de Logs", 96, width: 150);
         btnOpenFolder.Click += (_, _) => OpenLogFolder();
 
-        toolbar.Controls.AddRange(new Control[] { btnClear, btnOpenFolder });
+        var btnRa = MakeButton(GetRaButtonText(), 254, width: 180);
+        btnRa.Click += (_, _) =>
+        {
+            using var form = new RetroAchievementsLoginForm(_credentialStore);
+            form.ShowDialog(this);
+            btnRa.Text = GetRaButtonText();
+        };
+
+        toolbar.Controls.AddRange(new Control[] { btnClear, btnOpenFolder, btnRa });
         Controls.AddRange(new Control[] { _logBox, toolbar });
 
         // Populate with already-buffered entries
@@ -124,6 +135,12 @@ internal sealed class LogViewerForm : Form
         var logsPath = Path.Combine(AppContext.BaseDirectory, "logs");
         Directory.CreateDirectory(logsPath);
         System.Diagnostics.Process.Start("explorer.exe", logsPath);
+    }
+
+    private string GetRaButtonText()
+    {
+        var creds = _credentialStore.Load();
+        return creds is not null ? $"RA: {creds.Username}" : "RetroAchievements";
     }
 
     private static Button MakeButton(string text, int left, int width = 90) => new()

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "id": "f1e2d3c4-b5a6-9870-fedc-ba0987654321",
+  "title": "My Retro Game",
+  "version": "1.0",
+  "description": "Example manifest for a retro game running on a bundled RetroArch with RetroAchievements support.",
+  "executable": "retroarch/retroarch.exe",
+  "workingDirectory": "retroarch",
+  "arguments": ["-L", "cores/snes9x_libretro.dll", "-f", "../game.sfc"],
+  "stopCombination": ["Back", "Start"],
+  "tags": ["retro"],
+
+  "preLaunchScript": {
+    "windows": "scripts/insertplay-prelaunch.ps1",
+    "linux":   "scripts/insertplay-prelaunch.sh"
+  },
+  "postLaunchScript": {
+    "windows": "scripts/insertplay-postlaunch.ps1",
+    "linux":   "scripts/insertplay-postlaunch.sh"
+  },
+
+  "coverImage": "assets/cover.jpg"
+}

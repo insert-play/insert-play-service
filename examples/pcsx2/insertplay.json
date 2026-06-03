@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "title": "My PS2 Game",
+  "version": "1.0",
+  "description": "Example manifest for a PS2 game running on a bundled PCSX2 with RetroAchievements support.",
+  "executable": "pcsx2/pcsx2-qt.exe",
+  "workingDirectory": "pcsx2",
+  "arguments": ["-fullscreen", "../game.iso"],
+  "stopCombination": ["Back", "Start"],
+  "tags": ["ps2"],
+
+  "preLaunchScript": {
+    "windows": "scripts/insertplay-prelaunch.ps1",
+    "linux":   "scripts/insertplay-prelaunch.sh"
+  },
+  "postLaunchScript": {
+    "windows": "scripts/insertplay-postlaunch.ps1",
+    "linux":   "scripts/insertplay-postlaunch.sh"
+  },
+
+  "coverImage": "assets/cover.jpg",
+  "sdSaveDirectory": "pcsx2/memcards/"
+}

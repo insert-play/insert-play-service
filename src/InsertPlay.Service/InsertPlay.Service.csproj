@@ -37,6 +37,10 @@
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
   <!-- Platform-specific project references -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
     <ProjectReference Include="..\InsertPlay.Core\InsertPlay.Core.csproj" />
