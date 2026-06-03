@@ -107,6 +107,21 @@ public sealed class GameManifest
     [JsonPropertyName("preLaunchParams")]
     public Dictionary<string, string>? PreLaunchParams { get; init; }
 
+    /// <summary>
+    /// Script to run after the game exits. Accepts a plain string or a per-platform object.
+    /// Receives the same environment variables as the pre-launch script.
+    /// Path is relative to the SD card root.
+    /// </summary>
+    [JsonPropertyName("postLaunchScript")]
+    public PreLaunchScriptSpec? PostLaunchScript { get; init; }
+
+    /// <summary>
+    /// Per-game timeout override for the post-launch script in seconds.
+    /// Falls back to the global appsettings.json value when null.
+    /// </summary>
+    [JsonPropertyName("postLaunchTimeoutSeconds")]
+    public int? PostLaunchTimeoutSeconds { get; init; }
+
     // -------------------------------------------------------------------------
     // Future fields — Priority 2 (Installation & Steam)
     // -------------------------------------------------------------------------
