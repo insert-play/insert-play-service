@@ -25,7 +25,17 @@ InsertPlay is configured via `appsettings.json`, located next to the service exe
       "/media",
       "/run/media/$USER"
     ],
-    "LogLevel": "Information"
+    "LogLevel": "Information",
+    "PreLaunch": {
+      "Enabled": true,
+      "TimeoutSeconds": 30,
+      "DefaultResolution": "native"
+    },
+    "PS2Disc": {
+      "Enabled": true,
+      "AutoLaunch": true,
+      "RequireLocalPcsx2Folder": true
+    }
   },
   "Logging": {
     "LogLevel": {
@@ -49,6 +59,41 @@ InsertPlay is configured via `appsettings.json`, located next to the service exe
 | `ControllerPollIntervalMs` | `integer` | `50` | How often (in milliseconds) the controller state is polled. Lower values increase responsiveness at the cost of slightly higher CPU usage. |
 | `LinuxMediaPaths` | `string[]` | `["/media", "/run/media/$USER"]` | Directories watched for SD card mount events on Linux. Add custom paths if your distribution mounts removable drives elsewhere. `$USER` is expanded at startup. |
 | `LogLevel` | `string` | `"Information"` | Minimum log level: `Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`. |
+| `PreLaunch.Enabled` | `bool` | `true` | Globally enables or disables pre-launch and post-launch scripts. |
+| `PreLaunch.TimeoutSeconds` | `integer` | `30` | Default timeout used by pre/post-launch scripts when the manifest does not override it. |
+| `PreLaunch.DefaultResolution` | `string` | `"native"` | Default `INSERTPLAY_RESOLUTION` value forwarded to scripts when no manifest param overrides it. |
+| `PS2Disc.Enabled` | `bool` | `true` | Enables the PS2 optical disc monitoring module. |
+| `PS2Disc.AutoLaunch` | `bool` | `true` | Auto-launches a detected PS2 disc when no game is already running. |
+| `PS2Disc.RequireLocalPcsx2Folder` | `bool` | `true` | Requires `pcsx2/pcsx2-qt.exe` to exist under the service base directory before enabling PS2 disc launch. |
+
+---
+
+## PS2 Optical Disc Support
+
+PS2 optical support is currently Windows-first:
+
+- Windows: implemented (polling optical drives, looking for `SYSTEM.CNF`)
+- Linux/SteamOS: placeholder monitor in v1 (no auto-launch yet)
+
+When enabled, InsertPlay creates a synthetic runtime manifest and launches local PCSX2 with `-fullscreen -disc <drive>`.
+
+---
+
+## RetroAchievements Credentials
+
+RetroAchievements credentials are not configured in `appsettings.json`.
+
+- On Windows, credentials are set from the tray UI (`Conta RetroAchievements...`).
+- Credentials are persisted under `%APPDATA%\\InsertPlay\\ra-credentials.bin`.
+- On Windows this file is DPAPI-protected (current user scope).
+- On Linux builds, the file is plain JSON with restrictive file permissions.
+
+At runtime, InsertPlay logs in to RetroAchievements (`r=login2`) and caches a session token in memory. When pre/post-launch scripts run, these variables may be available:
+
+- `INSERTPLAY_RA_USERNAME`
+- `INSERTPLAY_RA_PASSWORD`
+- `INSERTPLAY_RA_TOKEN` (compatibility variable)
+- `INSERTPLAY_RA_LOGIN_TIMESTAMP`
 
 ### Future Options (Reserved — Not Active in v0.1)
 

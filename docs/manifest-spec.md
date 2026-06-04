@@ -2,6 +2,8 @@
 
 `insertplay.json` is the manifest file placed at the root of an SD game card. InsertPlay reads this file to identify the card, configure the game launch, and (in future versions) manage installation and save data.
 
+Physical PS2 optical disc launches (Windows) do not use `insertplay.json`; InsertPlay generates a synthetic runtime manifest for those sessions.
+
 ---
 
 ## File Location
@@ -71,6 +73,49 @@ The current schema version is `"1.0"`. The `schemaVersion` field is required to 
       "minItems": 1,
       "description": "Controller button names that must all be held simultaneously to quit the game. Overrides the service-level default from appsettings.json."
     },
+    "preLaunchScript": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "windows": { "type": "string" },
+            "linux": { "type": "string" }
+          }
+        }
+      ],
+      "description": "Script run before launch. Accepts a plain string (all platforms) or an object with platform keys."
+    },
+    "preLaunchTimeoutSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Per-game timeout override for pre-launch script execution."
+    },
+    "preLaunchParams": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Key/value parameters forwarded to scripts as INSERTPLAY_<KEY> environment variables."
+    },
+    "postLaunchScript": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "windows": { "type": "string" },
+            "linux": { "type": "string" }
+          }
+        }
+      ],
+      "description": "Script run after game exit. Accepts a plain string (all platforms) or an object with platform keys."
+    },
+    "postLaunchTimeoutSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Per-game timeout override for post-launch script execution."
+    },
     "developer": {
       "type": "string",
       "description": "Name of the game developer or studio."
@@ -137,6 +182,11 @@ The current schema version is `"1.0"`. The `schemaVersion` field is required to 
 | `workingDirectory` | `string` | | Defaults to the executable's parent directory |
 | `arguments` | `string[]` | | CLI arguments passed at launch |
 | `stopCombination` | `string[]` | | Button combo to quit the game. Overrides `appsettings.json` default. |
+| `preLaunchScript` | `string` or `object` | | Script path to run before launch. Can be shorthand string or `{ "windows": "...", "linux": "..." }`. |
+| `preLaunchTimeoutSeconds` | `integer` | | Per-game timeout override for pre-launch script. |
+| `preLaunchParams` | `object` | | Script parameters exported as `INSERTPLAY_<KEY>` environment variables. |
+| `postLaunchScript` | `string` or `object` | | Script path to run after the game exits. |
+| `postLaunchTimeoutSeconds` | `integer` | | Per-game timeout override for post-launch script. |
 | `developer` | `string` | | Developer name |
 | `publisher` | `string` | | Publisher name |
 | `description` | `string` | | Short game description |
@@ -203,9 +253,27 @@ InsertPlay normalizes path separators for the current OS automatically after exp
 
 ---
 
+## Script Environment Variables
+
+When pre/post-launch scripts run, InsertPlay provides a base set of environment variables:
+
+- `INSERTPLAY_CARD_PATH`
+- `INSERTPLAY_GAME_TITLE`
+- `INSERTPLAY_RESOLUTION` (from `preLaunchParams.resolution` or global default)
+- `INSERTPLAY_<KEY>` for each entry in `preLaunchParams`
+
+When RetroAchievements credentials are configured, scripts can also receive:
+
+- `INSERTPLAY_RA_USERNAME`
+- `INSERTPLAY_RA_PASSWORD`
+- `INSERTPLAY_RA_TOKEN` (compatibility variable)
+- `INSERTPLAY_RA_LOGIN_TIMESTAMP`
+
+---
+
 ## Validation Rules
 
-InsertPlay validates the manifest immediately on card insertion. Errors halt the launch and are logged; warnings are logged but do not block the launch.
+InsertPlay validates the manifest immediately on card insertion. Validation errors halt launch and are logged.
 
 | Rule | Severity |
 |---|---|
@@ -214,8 +282,6 @@ InsertPlay validates the manifest immediately on card insertion. Errors halt the
 | `title` is non-empty | Error |
 | `executable` file exists on the SD card | Error |
 | `executable` resolves to a file, not a directory | Error |
-| `stopCombination` contains only known button names | Warning |
-| Unknown top-level fields are present | Warning |
 
 ---
 

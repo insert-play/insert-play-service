@@ -6,7 +6,7 @@ This document describes the internal architecture of `insert-play-service`, its 
 
 ## Overview
 
-InsertPlay is a long-running background service built on the .NET 8 Generic Host (`IHostedService`). It listens for removable media events, parses game manifests from SD cards, and manages the full lifecycle of game processes.
+InsertPlay is a long-running background service built on the .NET 8 Generic Host (`IHostedService`). It listens for removable media events, parses game manifests from SD cards, supports synthetic manifests for physical PS2 discs, and manages the full lifecycle of game processes.
 
 The service is structured around a thin platform abstraction layer that isolates OS-specific code (device detection) from cross-platform business logic.
 
@@ -18,9 +18,17 @@ The service is structured around a thin platform abstraction layer that isolates
 graph TD
     Host["InsertPlayWorker\n(IHostedService / Generic Host)"]
     DM["IDeviceMonitor"]
+    PM2["IPS2DiscMonitor"]
     WDM["WindowsDeviceMonitor\nWMI Win32_VolumeChangeEvent"]
     LDM["LinuxDeviceMonitor\nFileSystemWatcher + udev"]
+    WPM2["WindowsPs2DiscMonitor\nOptical drive polling"]
+    LPM2["LinuxPs2DiscMonitor\n(v1 placeholder)"]
     MP["ManifestParser\nSystem.Text.Json"]
+    P2MF["Ps2DiscManifestFactory"]
+    PR["PreLaunchRunner"]
+    POR["PostLaunchRunner"]
+    RA["RetroAchievementsSessionProvider"]
+    CS["ICredentialStore"]
     GL["GameLauncher\nSystem.Diagnostics.Process"]
     PM["ProcessManager"]
     CI["ControllerInputHandler\nSDL2-CS"]
@@ -28,9 +36,17 @@ graph TD
     Manifest["insertplay.json\n(SD card root)"]
 
     Host --> DM
+    Host --> PM2
     DM --> WDM
     DM --> LDM
+    PM2 --> WPM2
+    PM2 --> LPM2
     Host --> MP
+    Host --> P2MF
+    Host --> PR
+    Host --> POR
+    Host --> RA
+    RA --> CS
     Host --> GL
     Host --> CI
     GL --> PM
@@ -73,6 +89,27 @@ sequenceDiagram
     Note over PM: Cleanup resources
 ```
 
+## Data Flow — Physical PS2 Disc (Windows)
+
+```mermaid
+sequenceDiagram
+    participant Disc as PS2 Disc
+    participant PDM as WindowsPs2DiscMonitor
+    participant MF as Ps2DiscManifestFactory
+    participant PR as PreLaunchRunner
+    participant RA as RetroAchievementsSessionProvider
+    participant GL as GameLauncher
+    participant PM as ProcessManager
+
+    Disc->>PDM: Optical disc inserted
+    PDM->>MF: TryCreateForDrive(drivePath)
+    MF-->>PDM: Synthetic GameManifest
+    PDM->>RA: EnrichAsync(credentials)
+    PDM->>PR: RunAsync(manifest, basePath, creds)
+    PR->>GL: Launch(manifest, basePath)
+    GL->>PM: Track(process)
+```
+
 ## Data Flow — Card Removal
 
 ```mermaid
@@ -99,7 +136,7 @@ sequenceDiagram
 
 ### `InsertPlayWorker` (Entry Point)
 
-The `IHostedService` implementation hosted by the .NET Generic Host. Owns the top-level lifecycle: starts the `IDeviceMonitor` and wires up event handlers for `CardInserted` and `CardRemoved`.
+The `IHostedService` implementation hosted by the .NET Generic Host. Owns the top-level lifecycle: starts `IDeviceMonitor` and `IPS2DiscMonitor`, wires media events, coordinates launch flow, and handles session cleanup.
 
 ### `IDeviceMonitor`
 
@@ -126,9 +163,30 @@ public interface IDeviceMonitor
 - Falls back to polling `DriveInfo.GetDrives()` filtered by `DriveType.Removable` on distributions where the mount path differs.
 - Same card identification strategy: checks for `insertplay.json` at the mounted path.
 
+### `IPS2DiscMonitor`
+
+Abstraction for physical PS2 optical disc detection.
+
+#### `WindowsPs2DiscMonitor`
+
+- Polls optical drives and detects likely PS2 media by checking for `SYSTEM.CNF`.
+- Emits `DiscInserted` / `DiscRemoved` events.
+- Can be gated by the `PS2Disc` options and local PCSX2 availability.
+
+#### `LinuxPs2DiscMonitor`
+
+- v1 placeholder implementation.
+- Logs that Linux physical disc auto-launch is not implemented yet.
+
 ### `ManifestParser`
 
-Reads and deserializes `insertplay.json` from the SD card root using `System.Text.Json` with source generation for AOT-safe, allocation-efficient parsing. Validates required fields and logs warnings for unknown fields.
+Reads and deserializes `insertplay.json` from the SD card root using `System.Text.Json`. Validates required fields (`schemaVersion`, `id`, `title`, `executable`) and verifies that the executable exists on the mounted media.
+
+### `Ps2DiscManifestFactory`
+
+Creates a synthetic runtime `GameManifest` for physical PS2 discs. The generated launch config targets local `pcsx2/pcsx2-qt.exe` and passes `-fullscreen -disc <drive>`.
+
+This keeps the launcher path uniform: SD cards use file manifests, while optical media uses generated manifests.
 
 ### `GameLauncher`
 
@@ -154,6 +212,18 @@ Tracks the active `Process` and handles termination:
 Polls SDL2 (via SDL2-CS) on a dedicated background thread at a configurable interval (default: 50 ms). Detects when **all** buttons in `StopCombination` are simultaneously held. Fires a `StopRequested` event consumed by `ProcessManager`.
 
 Button names in `stopCombination` are mapped to `SDL_GameControllerButton` enum values, with a fallback to raw joystick button indices for non-standard devices. See [manifest-spec.md — Stop Combination Button Names](manifest-spec.md#stop-combination-button-names) for the full list.
+
+### `PreLaunchRunner` and `PostLaunchRunner`
+
+- Resolve per-platform script paths from `preLaunchScript` and `postLaunchScript`.
+- Run scripts with configured timeout and environment variables.
+- Pre-launch failures can block the game start; post-launch failures are logged and ignored.
+
+### `RetroAchievementsSessionProvider` and `ICredentialStore`
+
+- `ICredentialStore` persists RetroAchievements credentials on the host machine.
+- `RetroAchievementsSessionProvider` authenticates against RetroAchievements (`r=login2`) and caches a runtime token in memory.
+- Runtime credential data is forwarded to pre/post-launch scripts as environment variables.
 
 ### Configuration (`InsertPlayOptions`)
 
